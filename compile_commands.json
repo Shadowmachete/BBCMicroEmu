@@ -1,0 +1,56 @@
+[
+  {
+    "file": "src/memory.c",
+    "arguments": [
+      "/usr/bin/gcc",
+      "-g",
+      "-std=c17",
+      "-Wall",
+      "-Werror",
+      "-Wextra",
+      "-Iinclude",
+      "-c",
+      "src/memory.c",
+      "-o",
+      "build/memory.o"
+    ],
+    "directory": "/home/shadowmachete/dev/BBCMicroEmu",
+    "output": "build/memory.o"
+  },
+  {
+    "file": "src/processor.c",
+    "arguments": [
+      "/usr/bin/gcc",
+      "-g",
+      "-std=c17",
+      "-Wall",
+      "-Werror",
+      "-Wextra",
+      "-Iinclude",
+      "-c",
+      "src/processor.c",
+      "-o",
+      "build/processor.o"
+    ],
+    "directory": "/home/shadowmachete/dev/BBCMicroEmu",
+    "output": "build/processor.o"
+  },
+  {
+    "file": "src/bbcmicro.c",
+    "arguments": [
+      "/usr/bin/gcc",
+      "-g",
+      "-std=c17",
+      "-Wall",
+      "-Werror",
+      "-Wextra",
+      "-Iinclude",
+      "-c",
+      "src/bbcmicro.c",
+      "-o",
+      "build/bbcmicro.o"
+    ],
+    "directory": "/home/shadowmachete/dev/BBCMicroEmu",
+    "output": "build/bbcmicro.o"
+  }
+]
