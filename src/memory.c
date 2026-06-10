@@ -77,7 +77,7 @@ u8 fe_read(u16 addr) {
   /* if (reg >= 0xE0 && reg <= 0xFF) */
   /*   return tube_ula_read(addr); */
 
-  return 0x00;
+  return 0xFF;
 }
 
 void noop_write_handler(u16 addr, u8 value) {

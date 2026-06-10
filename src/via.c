@@ -1,5 +1,5 @@
 /*
- *  System Via Module
+ *  VIA Module
  *
  *  0xFE40-0xFE5F
  *  40: Register B (top 4 bits for reading, bottom 4 for writing)
@@ -19,13 +19,26 @@
  *    13  Hardware scrolling - set C1=1 (See below)
  *    14  Turn off CAPS LOCK LED
  *    15  Turn off SHIFT LOCK LED
+ *    The values of C0 and C1 together determine the start scroll address for
+ *      the screen:
  *
+ *       C0   C1      Screen       Used in
+ *                    Address   Regular MODEs
+ *       ------------------------------------
+ *        0    0      $4000           3
+ *        0    1      $5800          4,5
+ *        1    0      $6000           6
+ *        1    1      $3000         0,1,2
+ *    When reading from this address the top four bits are read:
+ *    bit 7:    Speech processor 'ready' signal
+ *    bit 6:    Speech processor 'interrupt' signal
+ *    bit 4-5:  joystick buttons (bit is zero when button pressed)
  *  41: Register A [unused], use non-handshaking variant
  *  42: DDRB, always set to 0b00001111
  *  43: DDRA
  *    Sound: 0xFF, all bits written are output bits
  *    Speech: 0x00 for reading and 0xFF for writing
- *    Keyboard: 0b01111111 for reading, key to read is in bits 0-6 of the
+ *    Keyboard: 0b7F for reading, key to read is in bits 0-6 of the
  *      data and `pressed` state is in bit 7
  *  44-47: Timer 1 registers
  *    1Mhz countdown, used as a 100Hz timer
@@ -75,17 +88,135 @@
  *    bit 7 = (when reading) master interrupt flag
  *  4E: Interrupt Enable register
  *    write with bit 7 set or clear to enable/disable interrupt
+ *  4F: Register A without handshaking
  */
 
 #include "via.h"
 #include "types.h"
 
+VIA system_via = {.ier = 0xF};
+VIA user_via;
+
 u8 system_via_read(u16 addr) {
-  (void)addr;
+  switch (addr & 0x0F) {
+  case 0x0: {
+    // speech ready, interrupt off, joysticks not pressed
+    return 0b10110000 | (system_via.reg_b & 0x0F);
+  } break;
+  case 0x1: {
+    // unused
+    return system_via.reg_a;
+  } break;
+  case 0x2: {
+    return system_via.ddrb;
+  } break;
+  case 0x3: {
+    return system_via.ddra;
+  } break;
+  case 0x4: {
+    return system_via.timer1_counterlow;
+  } break;
+  case 0x5: {
+    return system_via.timer1_counterhigh;
+  } break;
+  case 0x6: {
+    return system_via.timer1_latchlow;
+  } break;
+  case 0x7: {
+    return system_via.timer1_latchhigh;
+  } break;
+  case 0x8: {
+    return system_via.timer2_counterlow;
+  } break;
+  case 0x9: {
+    return system_via.timer2_counterhigh;
+  } break;
+  case 0xA: {
+    return system_via.shift_reg;
+  } break;
+  case 0xB: {
+    return system_via.acr;
+  } break;
+  case 0xC: {
+    return system_via.pcr;
+  } break;
+  case 0xD: {
+    u8 pending = system_via.ifr & system_via.ier & 0x7F;
+    return pending ? (system_via.ifr | 0x80) : (system_via.ifr & 0x7F);
+  } break;
+  case 0xE: {
+    return system_via.ier;
+  } break;
+  case 0xF: {
+    return system_via.reg_a;
+  } break;
+  }
   return 0x00;
 }
 
 void system_via_write(u16 addr, u8 value) {
-  (void)addr;
-  (void)value;
+  switch (addr & 0x0F) {
+  case 0x0: {
+    // current state of the peripherals are stored in the 8 bits of reg_b
+    // in the order specified at the top (note, 4th bit set indicates disabled
+    // keyboard auto scanning)
+    if (value < 0x8) {
+      system_via.reg_b |= 1 << value;
+    } else {
+      system_via.reg_b &= ~(1 << (value - 8));
+    }
+  } break;
+  case 0x1: {
+    // unused
+    system_via.reg_a = value;
+  } break;
+  case 0x2: {
+    // value should be 0b00001111
+    system_via.ddrb = value;
+  } break;
+  case 0x3: {
+    system_via.ddra = value;
+  } break;
+  case 0x4: {
+    system_via.timer1_counterlow = value;
+  } break;
+  case 0x5: {
+    system_via.timer1_counterhigh = value;
+  } break;
+  case 0x6: {
+    system_via.timer1_latchlow = value;
+  } break;
+  case 0x7: {
+    system_via.timer1_latchhigh = value;
+  } break;
+  case 0x8: {
+    system_via.timer2_counterlow = value;
+  } break;
+  case 0x9: {
+    system_via.timer2_counterhigh = value;
+  } break;
+  case 0xA: {
+    system_via.shift_reg = value;
+  } break;
+  case 0xB: {
+    system_via.acr = value;
+  } break;
+  case 0xC: {
+    system_via.pcr = value;
+  } break;
+  case 0xD: {
+    system_via.ifr &= ~(value & 0x7F);
+  } break;
+  case 0xE: {
+    b8 enable = (value & 0x80) != 0;
+    if (enable) {
+      system_via.ier |= value;
+    } else {
+      system_via.ier &= ~value;
+    }
+  } break;
+  case 0xF: {
+    system_via.reg_a = value;
+  } break;
+  }
 }
