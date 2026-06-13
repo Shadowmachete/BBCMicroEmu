@@ -31,10 +31,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "crtc.h"
 #include "memory.h"
 #include "processor.h"
 #include "types.h"
 #include "via.h"
+#include "vula.h"
 
 u8 ram[0x8000]       = {0}; // 32KB of ram + io
 u8 os_rom[0x4000]    = {0}; // 16KB of OS rom
@@ -54,14 +56,14 @@ u8 generic_read_handler(u16 addr) {
 
 u8 fe_read(u16 addr) {
   u8 reg = addr & 0xFF;
-  /* if (reg >= 0x00 && reg <= 0x07) */
-  /*   return crtc_read(addr); */
+  if (reg <= 0x07)
+    return crtc_read(addr);
   /* if (reg >= 0x08 && reg <= 0x0F) */
   /*   return acia_read(addr); */
   /* if (reg >= 0x10 && reg <= 0x1F) */
   /*   return serial_ula_read(addr); */
-  /* if (reg >= 0x20 && reg <= 0x2F) */
-  /*   return video_ula_read(addr); */
+  if (reg >= 0x20 && reg <= 0x2F)
+    return 0xFF;
   /* if (reg >= 0x30 && reg <= 0x3F) */
   /*   return paged_rom_selector_read(addr); */
   if (reg >= 0x40 && reg <= 0x5F)
@@ -87,14 +89,14 @@ void noop_write_handler(u16 addr, u8 value) {
 
 void fe_write(u16 addr, u8 value) {
   u8 reg = addr & 0xFF;
-  /* if (reg >= 0x00 && reg <= 0x07) */
-  /*   crtc_write(addr, value); */
+  if (reg <= 0x07)
+    crtc_write(addr, value);
   /* if (reg >= 0x08 && reg <= 0x0F) */
   /*   acia_write(addr, value); */
   /* if (reg >= 0x10 && reg <= 0x1F) */
   /*   serial_ula_write(addr, value); */
-  /* if (reg >= 0x20 && reg <= 0x2F) */
-  /*   video_ula_write(addr, value); */
+  if (reg >= 0x20 && reg <= 0x2F)
+    vula_write(addr, value);
   /* if (reg >= 0x30 && reg <= 0x3F) */
   /*   paged_rom_selector_write(addr, value); */
   if (reg >= 0x40 && reg <= 0x5F)
@@ -200,7 +202,7 @@ void mem_init(void) {
 u8 mem_read(u16 addr) {
   u8 p = (addr >> 8) & 0xFF;
   if (page_read_handler[p]) {
-    printf("Reading from 0x%0X\n", addr);
+    /* printf("Reading from 0x%0X\n", addr); */
     return page_read_handler[p](addr);
   }
   u8 *base = page_ptr[p];
@@ -221,7 +223,7 @@ void mem_write(u16 addr, u8 v) {
   }
 
   if (page_write_handler[p]) {
-    printf("Writing 0x%0X to 0x%0X\n", v, addr);
+    /* printf("Writing 0x%0X to 0x%0X\n", v, addr); */
     page_write_handler[p](addr, v);
     return;
   }
@@ -283,4 +285,24 @@ u16 stack_pull_16() {
   u8 high = stack_pull();
 
   return ((u16)high << 8) | low;
+}
+
+void dump_vram() {
+  u16 addr = crtc.upper_left_character_mem_loc * 8;
+  printf("addr: 0x%0x\n", addr);
+  printf("rows: %d\n", crtc.n_rows);
+  printf("cols: %d\n", crtc.c_per_row);
+  for (int row = 0; row < crtc.n_rows; row++) {
+    for (int scan = 0; scan <= crtc.scan_lines_per_c; scan++) {
+      for (int col = 0; col < crtc.c_per_row; col++) {
+        u8 byte = mem_read(addr + col + scan * crtc.c_per_row);
+        for (int b = 7; b >= 0; b--) {
+          int pixel = (byte >> b) & 1;
+          printf("%c", pixel ? '#' : '.');
+        }
+      }
+      printf("\n");
+    }
+    addr += crtc.c_per_row * (crtc.scan_lines_per_c + 1);
+  }
 }

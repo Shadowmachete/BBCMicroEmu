@@ -9,6 +9,7 @@
       "-Werror",
       "-Wextra",
       "-Iinclude",
+      "-Ivendor/raylib/include",
       "-c",
       "src/memory.c",
       "-o",
@@ -27,6 +28,7 @@
       "-Werror",
       "-Wextra",
       "-Iinclude",
+      "-Ivendor/raylib/include",
       "-c",
       "src/processor.c",
       "-o",
@@ -45,6 +47,7 @@
       "-Werror",
       "-Wextra",
       "-Iinclude",
+      "-Ivendor/raylib/include",
       "-c",
       "src/bbcmicro.c",
       "-o",
@@ -52,5 +55,81 @@
     ],
     "directory": "/home/shadowmachete/dev/BBCMicroEmu",
     "output": "build/bbcmicro.o"
+  },
+  {
+    "file": "src/keyboard.c",
+    "arguments": [
+      "/usr/bin/gcc",
+      "-g",
+      "-std=c17",
+      "-Wall",
+      "-Werror",
+      "-Wextra",
+      "-Iinclude",
+      "-Ivendor/raylib/include",
+      "-c",
+      "src/keyboard.c",
+      "-o",
+      "build/keyboard.o"
+    ],
+    "directory": "/home/shadowmachete/dev/BBCMicroEmu",
+    "output": "build/keyboard.o"
+  },
+  {
+    "file": "src/crtc.c",
+    "arguments": [
+      "/usr/bin/gcc",
+      "-g",
+      "-std=c17",
+      "-Wall",
+      "-Werror",
+      "-Wextra",
+      "-Iinclude",
+      "-Ivendor/raylib/include",
+      "-c",
+      "src/crtc.c",
+      "-o",
+      "build/crtc.o"
+    ],
+    "directory": "/home/shadowmachete/dev/BBCMicroEmu",
+    "output": "build/crtc.o"
+  },
+  {
+    "file": "src/via.c",
+    "arguments": [
+      "/usr/bin/gcc",
+      "-g",
+      "-std=c17",
+      "-Wall",
+      "-Werror",
+      "-Wextra",
+      "-Iinclude",
+      "-Ivendor/raylib/include",
+      "-c",
+      "src/via.c",
+      "-o",
+      "build/via.o"
+    ],
+    "directory": "/home/shadowmachete/dev/BBCMicroEmu",
+    "output": "build/via.o"
+  },
+  {
+    "file": "src/vula.c",
+    "arguments": [
+      "/usr/bin/gcc",
+      "-g",
+      "-std=c17",
+      "-Wall",
+      "-Werror",
+      "-Wextra",
+      "-Iinclude",
+      "-Ivendor/raylib/include",
+      "-c",
+      "src/vula.c",
+      "-o",
+      "build/vula.o"
+    ],
+    "directory": "/home/shadowmachete/dev/BBCMicroEmu",
+    "output": "build/vula.o"
   }
 ]

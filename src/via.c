@@ -158,8 +158,9 @@ void system_via_write(u16 addr, u8 value) {
   switch (addr & 0x0F) {
   case 0x0: {
     // current state of the peripherals are stored in the 8 bits of reg_b
-    // in the order specified at the top (note, 4th bit set indicates disabled
-    // keyboard auto scanning)
+    // in the order specified at the top
+    // (NOTE: 4th bit set indicates disabled keyboard auto scanning,
+    // and C0,C1 = 0)
     if (value < 0x8) {
       system_via.reg_b |= 1 << value;
     } else {

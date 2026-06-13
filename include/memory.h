@@ -40,4 +40,6 @@ void stack_push_16(u16 v);
 u8 stack_pull();
 u16 stack_pull_16();
 
+void dump_vram();
+
 #endif // !MEMORY_H

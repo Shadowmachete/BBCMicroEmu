@@ -11,4 +11,7 @@ typedef int8_t i8;
 
 typedef i8 b8;
 
+typedef float f32;
+typedef double f64;
+
 #endif // !TYPES_H

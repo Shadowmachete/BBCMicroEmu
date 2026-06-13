@@ -1,0 +1,16 @@
+#ifndef VULA_H
+#define VULA_H
+
+#include "types.h"
+
+typedef struct {
+  u8 control_reg;
+  u8 palette_reg[16];
+} VULA;
+
+extern VULA vula;
+
+void vula_write(u16 addr, u8 value);
+void dump_vula();
+
+#endif // !VULA_H
