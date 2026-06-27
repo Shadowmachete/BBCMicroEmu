@@ -29,6 +29,10 @@
  *        0    1      $5800          4,5
  *        1    0      $6000           6
  *        1    1      $3000         0,1,2
+ *
+ *        NOTE: apparently this isnt correct and its 11 for 4,5 and 01 for 0,1,2
+ *              for my mos.rom
+ *
  *    When reading from this address the top four bits are read:
  *    bit 7:    Speech processor 'ready' signal
  *    bit 6:    Speech processor 'interrupt' signal
@@ -93,6 +97,7 @@
 
 #include "via.h"
 #include "types.h"
+#include <stdio.h>
 
 VIA system_via = {.ier = 0xF};
 VIA user_via;
@@ -157,15 +162,9 @@ u8 system_via_read(u16 addr) {
 void system_via_write(u16 addr, u8 value) {
   switch (addr & 0x0F) {
   case 0x0: {
-    // current state of the peripherals are stored in the 8 bits of reg_b
-    // in the order specified at the top
-    // (NOTE: 4th bit set indicates disabled keyboard auto scanning,
-    // and C0,C1 = 0)
-    if (value < 0x8) {
-      system_via.reg_b |= 1 << value;
-    } else {
-      system_via.reg_b &= ~(1 << (value - 8));
-    }
+    u8 line          = value & 7;
+    system_via.reg_b = (system_via.reg_b & ~(1 << line)) | ((value >> 3) & 1)
+                                                               << line;
   } break;
   case 0x1: {
     // unused
@@ -220,4 +219,25 @@ void system_via_write(u16 addr, u8 value) {
     system_via.reg_a = value;
   } break;
   }
+}
+
+u16 get_vram_base() {
+  // C0 is bit 4 and C1 is bit 5
+  switch ((system_via.reg_b >> 4) & 0b11) {
+  case 0b00:
+    return 0x4000; // MODE 3
+  case 0b11:
+    return 0x5800; // MODEs 4, 5
+  case 0b01:
+    return 0x6000; // MODE 6
+  case 0b10:
+    return 0x3000; // MODEs 0, 1, 2
+  }
+
+  return 0x5800;
+}
+
+void dump_system_via() {
+  printf("reg b: %0b\n", system_via.reg_b);
+  printf("reg a: %0b\n", system_via.reg_a);
 }

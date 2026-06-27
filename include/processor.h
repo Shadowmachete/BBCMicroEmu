@@ -179,6 +179,9 @@ typedef struct {
     };
   };
 
+  b8 nmi_pending;
+  u8 nmi_instr_cooldown;
+
   u8 cycles;
 } CPU;
 

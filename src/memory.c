@@ -16,7 +16,7 @@
  *      30-3F: 74LS161 (Paged ROM selector)
  *      40-5F: 6522 VIA (SYSTEM VIA)
  *      60-7F: 6522 VIA (USER VIA)
- *      80-9F: 8271 FDC (Floppy disk contoller)
+ *      80-9F: 8271 FDC (Floppy disk controller)
  *      A0-BF: 68B54 ADLC (ECONET controller)
  *      C0-DF: uPD7002 (Analogue to digital converter)
  *      E0-FF: Tube ULA (Tube system interface)
@@ -32,6 +32,7 @@
 #include <string.h>
 
 #include "crtc.h"
+#include "fdc.h"
 #include "memory.h"
 #include "processor.h"
 #include "types.h"
@@ -41,6 +42,10 @@
 u8 ram[0x8000]       = {0}; // 32KB of ram + io
 u8 os_rom[0x4000]    = {0}; // 16KB of OS rom
 u8 basic_rom[0x4000] = {0}; // 16KB of language rom
+u8 dfs_rom[0x4000]   = {0}; // 16KB of DFS rom
+
+u8 *rom_bank[16] = {0}; // 16 slots for side-ways rom
+u8 bank_counter  = 0;
 
 u8 *page_ptr[PAGE_COUNT];
 b8 readonly[PAGE_COUNT] = {0};
@@ -63,21 +68,22 @@ u8 fe_read(u16 addr) {
   /* if (reg >= 0x10 && reg <= 0x1F) */
   /*   return serial_ula_read(addr); */
   if (reg >= 0x20 && reg <= 0x2F)
-    return 0xFF;
-  /* if (reg >= 0x30 && reg <= 0x3F) */
-  /*   return paged_rom_selector_read(addr); */
+    return vula_read(addr);
+  if (reg >= 0x30 && reg <= 0x3F)
+    return 0x00; // no reading from paged ROM reg
   if (reg >= 0x40 && reg <= 0x5F)
     return system_via_read(addr);
   /* if (reg >= 0x60 && reg <= 0x7F) */
   /*   return user_via_read(addr); */
-  /* if (reg >= 0x80 && reg <= 0x9F) */
-  /*   return fdc_read(addr); */
+  if (reg >= 0x80 && reg <= 0x9F)
+    return fdc_read(addr);
   /* if (reg >= 0xA0 && reg <= 0xBF) */
   /*   return adlc_read(addr); */
   /* if (reg >= 0xC0 && reg <= 0xDF) */
   /*   return upd_read(addr); */
-  /* if (reg >= 0xE0 && reg <= 0xFF) */
-  /*   return tube_ula_read(addr); */
+  if (reg >= 0xE0)
+    // return no tube
+    return 0x00; // tube_ula_read(addr);
 
   return 0xFF;
 }
@@ -97,14 +103,14 @@ void fe_write(u16 addr, u8 value) {
   /*   serial_ula_write(addr, value); */
   if (reg >= 0x20 && reg <= 0x2F)
     vula_write(addr, value);
-  /* if (reg >= 0x30 && reg <= 0x3F) */
-  /*   paged_rom_selector_write(addr, value); */
+  if (reg >= 0x30 && reg <= 0x3F)
+    map_paged_rom(value & 0xF);
   if (reg >= 0x40 && reg <= 0x5F)
     system_via_write(addr, value);
   /* if (reg >= 0x60 && reg <= 0x7F) */
   /*   user_via_write(addr, value); */
-  /* if (reg >= 0x80 && reg <= 0x9F) */
-  /*   fdc_write(addr, value); */
+  if (reg >= 0x80 && reg <= 0x9F)
+    fdc_write(addr, value);
   /* if (reg >= 0xA0 && reg <= 0xBF) */
   /*   adlc_write(addr, value); */
   /* if (reg >= 0xC0 && reg <= 0xDF) */
@@ -114,6 +120,20 @@ void fe_write(u16 addr, u8 value) {
 }
 
 void map_page(int page_index, u8 *backing) { page_ptr[page_index] = backing; }
+
+void map_paged_rom(int rom_index) {
+  if (rom_index == 0)
+    printf("load basic\n");
+  else if (rom_index == 1)
+    printf("load dfs\n");
+
+  u8 *rom = rom_bank[rom_index];
+
+  for (int p = 0x80; p <= 0xBF; ++p) {
+    map_page(p, rom ? &rom[(p - 0x80) * 256] : NULL);
+    readonly[p] = 1;
+  }
+}
 
 void map_page_io(int page_index, io_read_t r, io_write_t w) {
   readonly[page_index]           = 0;
@@ -149,6 +169,26 @@ void mem_init(void) {
     exit(1);
   }
 
+  rom_bank[bank_counter++] = basic_rom;
+
+  // Load BASIC ROM from disk
+  f = fopen("dfs.rom", "rb");
+
+  if (f == NULL) {
+    perror("Failed to open dfs.rom file\n");
+    exit(1);
+  }
+
+  n = fread(dfs_rom, 1, ROM_SIZE, f);
+  fclose(f);
+
+  if (n != ROM_SIZE) {
+    perror("Failed to read all of dfs.rom file\n");
+    exit(1);
+  }
+
+  rom_bank[bank_counter++] = dfs_rom;
+
   // Load OS ROM from disk
   f = fopen("mos.rom", "rb");
 
@@ -161,11 +201,11 @@ void mem_init(void) {
   fclose(f);
 
   if (n != ROM_SIZE) {
-    perror("Failed to read all of os.rom file\n");
+    perror("Failed to read all of mos.rom file\n");
     exit(1);
   }
 
-  printf("OS and BASIC ROM loaded\n");
+  printf("ROM files loaded\n");
   printf("Mapping memory regions...\n");
 
   // map RAM
@@ -180,10 +220,7 @@ void mem_init(void) {
   }
 
   // map BASIC ROM
-  for (int p = 0x80; p <= 0xBF; ++p) {
-    map_page(p, &basic_rom[(p - 0x80) * 256]);
-    readonly[p] = 1;
-  }
+  map_paged_rom(0);
 
   // map OS ROM
   for (int p = 0xC0; p <= 0xFF; ++p) {
@@ -200,6 +237,8 @@ void mem_init(void) {
 }
 
 u8 mem_read(u16 addr) {
+  cpu.cycles++;
+
   u8 p = (addr >> 8) & 0xFF;
   if (page_read_handler[p]) {
     /* printf("Reading from 0x%0X\n", addr); */
@@ -211,10 +250,12 @@ u8 mem_read(u16 addr) {
 
   printf("Attempt to read from unmapped memory address 0x%04X ignored\n", addr);
 
-  return 0xFF; // unmapped memory
+  return 0x00; // unmapped memory
 }
 
 void mem_write(u16 addr, u8 v) {
+  cpu.cycles++;
+
   u8 p = (addr >> 8) & 0xFF;
   if (readonly[p]) {
     printf("Attempt to write to read-only memory address 0x%04X denied\n",
@@ -285,24 +326,4 @@ u16 stack_pull_16() {
   u8 high = stack_pull();
 
   return ((u16)high << 8) | low;
-}
-
-void dump_vram() {
-  u16 addr = crtc.upper_left_character_mem_loc * 8;
-  printf("addr: 0x%0x\n", addr);
-  printf("rows: %d\n", crtc.n_rows);
-  printf("cols: %d\n", crtc.c_per_row);
-  for (int row = 0; row < crtc.n_rows; row++) {
-    for (int scan = 0; scan <= crtc.scan_lines_per_c; scan++) {
-      for (int col = 0; col < crtc.c_per_row; col++) {
-        u8 byte = mem_read(addr + col + scan * crtc.c_per_row);
-        for (int b = 7; b >= 0; b--) {
-          int pixel = (byte >> b) & 1;
-          printf("%c", pixel ? '#' : '.');
-        }
-      }
-      printf("\n");
-    }
-    addr += crtc.c_per_row * (crtc.scan_lines_per_c + 1);
-  }
 }

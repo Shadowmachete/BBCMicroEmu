@@ -40,7 +40,7 @@
  *           (R12) bits
  *  R14-R15: curr_cursor, 8 low order (R15) and 6 high order (R14)
  *           bits
- *  R16-R17: l_pen_pos, unused for us
+ *  R16-R17: l_pen_pos, unused by us
  */
 
 #include "crtc.h"

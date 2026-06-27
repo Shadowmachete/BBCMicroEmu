@@ -30,4 +30,8 @@ void system_via_write(u16 addr, u8 value);
 u8 user_via_read(u16 addr);
 void user_via_write(u16 addr, u8 value);
 
+u16 get_vram_base();
+
+void dump_system_via();
+
 #endif // !VIA_H

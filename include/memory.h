@@ -27,6 +27,7 @@ extern io_read_t page_read_handler[PAGE_COUNT];
 extern io_write_t page_write_handler[PAGE_COUNT];
 
 void map_page(int page_index, u8 *backing);
+void map_paged_rom(int rom_index);
 void map_page_io(int page_index, io_read_t r, io_write_t w);
 
 void mem_init(void);
@@ -39,7 +40,5 @@ void stack_push_16(u16 v);
 
 u8 stack_pull();
 u16 stack_pull_16();
-
-void dump_vram();
 
 #endif // !MEMORY_H

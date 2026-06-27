@@ -1,6 +1,6 @@
 [
   {
-    "file": "src/memory.c",
+    "file": "src/fdc.c",
     "arguments": [
       "/usr/bin/gcc",
       "-g",
@@ -11,88 +11,12 @@
       "-Iinclude",
       "-Ivendor/raylib/include",
       "-c",
-      "src/memory.c",
+      "src/fdc.c",
       "-o",
-      "build/memory.o"
+      "build/fdc.o"
     ],
     "directory": "/home/shadowmachete/dev/BBCMicroEmu",
-    "output": "build/memory.o"
-  },
-  {
-    "file": "src/processor.c",
-    "arguments": [
-      "/usr/bin/gcc",
-      "-g",
-      "-std=c17",
-      "-Wall",
-      "-Werror",
-      "-Wextra",
-      "-Iinclude",
-      "-Ivendor/raylib/include",
-      "-c",
-      "src/processor.c",
-      "-o",
-      "build/processor.o"
-    ],
-    "directory": "/home/shadowmachete/dev/BBCMicroEmu",
-    "output": "build/processor.o"
-  },
-  {
-    "file": "src/bbcmicro.c",
-    "arguments": [
-      "/usr/bin/gcc",
-      "-g",
-      "-std=c17",
-      "-Wall",
-      "-Werror",
-      "-Wextra",
-      "-Iinclude",
-      "-Ivendor/raylib/include",
-      "-c",
-      "src/bbcmicro.c",
-      "-o",
-      "build/bbcmicro.o"
-    ],
-    "directory": "/home/shadowmachete/dev/BBCMicroEmu",
-    "output": "build/bbcmicro.o"
-  },
-  {
-    "file": "src/keyboard.c",
-    "arguments": [
-      "/usr/bin/gcc",
-      "-g",
-      "-std=c17",
-      "-Wall",
-      "-Werror",
-      "-Wextra",
-      "-Iinclude",
-      "-Ivendor/raylib/include",
-      "-c",
-      "src/keyboard.c",
-      "-o",
-      "build/keyboard.o"
-    ],
-    "directory": "/home/shadowmachete/dev/BBCMicroEmu",
-    "output": "build/keyboard.o"
-  },
-  {
-    "file": "src/crtc.c",
-    "arguments": [
-      "/usr/bin/gcc",
-      "-g",
-      "-std=c17",
-      "-Wall",
-      "-Werror",
-      "-Wextra",
-      "-Iinclude",
-      "-Ivendor/raylib/include",
-      "-c",
-      "src/crtc.c",
-      "-o",
-      "build/crtc.o"
-    ],
-    "directory": "/home/shadowmachete/dev/BBCMicroEmu",
-    "output": "build/crtc.o"
+    "output": "build/fdc.o"
   },
   {
     "file": "src/via.c",

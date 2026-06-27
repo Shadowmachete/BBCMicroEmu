@@ -10,3 +10,4 @@ A BBC Micro Emulator written in C
 - [BBC Micro Advanced User Guide](https://archive.org/details/bbc-micro-advanced-user-guide/)
 - [BBC Microcomputer System](https://archive.org/details/20190119BBCMicrocomputerSystem)
 - [Toby Lobster's MOS Reassembly for the BBC Micro](https://tobylobster.github.io/mos/mos/index.html)
+- [8271 FDC Specification](https://pulsar-cad.com/datasheets/54/05/00000000554.pdf)

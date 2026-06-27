@@ -39,6 +39,8 @@
 #include "memory.h"
 #include "processor.h"
 
+#define DEFAULT_NMI_INSTR_COOLDOWN 3
+
 CPU cpu = {0};
 
 static inline void set_NZ(u8 result) {
@@ -52,9 +54,15 @@ static inline u8 calc_overflow(u8 a, u8 operand, u16 result) {
 
 static inline u16 zero() { return mem_read(cpu.PC++); }
 
-static inline u16 zero_x() { return (mem_read(cpu.PC++) + cpu.X) & 0xFF; }
+static inline u16 zero_x() {
+  cpu.cycles++;
+  return (mem_read(cpu.PC++) + cpu.X) & 0xFF;
+}
 
-static inline u16 zero_y() { return (mem_read(cpu.PC++) + cpu.Y) & 0xFF; }
+static inline u16 zero_y() {
+  cpu.cycles++;
+  return (mem_read(cpu.PC++) + cpu.Y) & 0xFF;
+}
 
 static inline u16 abs_() {
   u16 absolute_addr = READ_16LE(cpu.PC);
@@ -64,7 +72,6 @@ static inline u16 abs_() {
 
 static inline u16 abs_x() {
   u16 absolute_addr = READ_16LE(cpu.PC);
-  /* printf("0x%0X\n", absolute_addr + cpu.X); */
   cpu.PC += 2;
   return absolute_addr + cpu.X;
 }
@@ -82,6 +89,7 @@ static inline u16 ind() {
 }
 
 static inline u16 ind_x() {
+  cpu.cycles++;
   u8 zero_page_addr = mem_read(cpu.PC++);
   return READ_16LE((zero_page_addr + cpu.X) & 0xFF);
 }
@@ -130,6 +138,7 @@ static inline void and(u16 addr) {
 static inline void asl(u16 addr) {
   u8 value  = mem_read(addr);
   u8 result = value << 1;
+  cpu.cycles++;
   mem_write(addr, result);
   cpu.CF = (value & 0x80) != 0;
   set_NZ(result);
@@ -137,7 +146,6 @@ static inline void asl(u16 addr) {
 
 static inline void branch() {
   u8 value = mem_read(cpu.PC++);
-  /* printf("%d\n", (i8)value); */
   cpu.PC += (i8)value;
 }
 
@@ -171,12 +179,14 @@ static inline void cpy(u16 addr) {
 
 static inline void dec(u16 addr) {
   u8 result = mem_read(addr) - 1;
+  cpu.cycles++;
   mem_write(addr, result);
   set_NZ(result);
 }
 
 static inline void inc(u16 addr) {
   u8 result = mem_read(addr) + 1;
+  cpu.cycles++;
   mem_write(addr, result);
   set_NZ(result);
 }
@@ -205,6 +215,7 @@ static inline void ldy(u16 addr) {
 static inline void lsr(u16 addr) {
   u8 value  = mem_read(addr);
   u8 result = value >> 1;
+  cpu.cycles++;
   mem_write(addr, result);
   cpu.CF = (value & 0x01) != 0;
   set_NZ(result);
@@ -219,6 +230,7 @@ static inline void ora(u16 addr) {
 static inline void rol(u16 addr) {
   u8 value  = mem_read(addr);
   u8 result = (value << 1) | cpu.CF;
+  cpu.cycles++;
   mem_write(addr, result);
   cpu.CF = (value & 0x80) != 0;
   set_NZ(result);
@@ -227,6 +239,7 @@ static inline void rol(u16 addr) {
 static inline void ror(u16 addr) {
   u8 value  = mem_read(addr);
   u8 result = (value >> 1) | (cpu.CF << 7);
+  cpu.cycles++;
   mem_write(addr, result);
   cpu.CF = (value & 0x01) != 0;
   set_NZ(result);
@@ -337,6 +350,7 @@ void cpu_exec() {
   } break;
   case ASL_ACC: {
     // printf("ASL_ACC\n");
+    cpu.cycles++;
     cpu.CF = (cpu.A & 0x80) != 0;
     cpu.A <<= 1;
     set_NZ(cpu.A);
@@ -355,10 +369,12 @@ void cpu_exec() {
   } break;
   case ASL_AX: {
     // printf("ASL_AX\n");
+    cpu.cycles++;
     asl(abs_x());
   } break;
   case BCC: {
     // printf("BCC\n");
+    cpu.cycles++;
     if (cpu.CF != 0) {
       cpu.PC++;
       break;
@@ -368,6 +384,7 @@ void cpu_exec() {
   } break;
   case BCS: {
     // printf("BCS\n");
+    cpu.cycles++;
     if (cpu.CF != 1) {
       cpu.PC++;
       break;
@@ -377,6 +394,7 @@ void cpu_exec() {
   } break;
   case BEQ: {
     // printf("BEQ\n");
+    cpu.cycles++;
     if (cpu.ZF != 1) {
       cpu.PC++;
       break;
@@ -394,6 +412,7 @@ void cpu_exec() {
   } break;
   case BMI: {
     // printf("BMI\n");
+    cpu.cycles++;
     if (cpu.NF != 1) {
       cpu.PC++;
       break;
@@ -403,6 +422,7 @@ void cpu_exec() {
   } break;
   case BNE: {
     // printf("BNE\n");
+    cpu.cycles++;
     if (cpu.ZF != 0) {
       cpu.PC++;
       break;
@@ -411,7 +431,8 @@ void cpu_exec() {
     branch();
   } break;
   case BPL: {
-    /* printf("BPL "); */
+    // printf("BPL ");
+    cpu.cycles++;
     if (cpu.NF != 0) {
       cpu.PC++;
       break;
@@ -425,6 +446,7 @@ void cpu_exec() {
   } break;
   case BVC: {
     // printf("BVC\n");
+    cpu.cycles++;
     if (cpu.VF != 0) {
       cpu.PC++;
       break;
@@ -434,6 +456,7 @@ void cpu_exec() {
   } break;
   case BVS: {
     // printf("BVS\n");
+    cpu.cycles++;
     if (cpu.VF != 1) {
       cpu.PC++;
       break;
@@ -443,18 +466,22 @@ void cpu_exec() {
   } break;
   case CLC: {
     // printf("CLC\n");
+    cpu.cycles++;
     cpu.CF = 0;
   } break;
   case CLD: {
     // printf("CLD\n");
+    cpu.cycles++;
     cpu.DF = 0;
   } break;
   case CLI: {
     // printf("CLI\n");
+    cpu.cycles++;
     cpu.IF = 0;
   } break;
   case CLV: {
     // printf("CLV\n");
+    cpu.cycles++;
     cpu.VF = 0;
   } break;
   case CMP_I: {
@@ -527,15 +554,18 @@ void cpu_exec() {
   } break;
   case DEC_AX: {
     /* printf("DEC_AX "); */
+    cpu.cycles++;
     dec(abs_x());
   } break;
   case DEX: {
     /* printf("DEX %d\n", cpu.X); */
+    cpu.cycles++;
     cpu.X -= 1;
     set_NZ(cpu.X);
   } break;
   case DEY: {
     // printf("DEY\n");
+    cpu.cycles++;
     cpu.Y -= 1;
     set_NZ(cpu.Y);
   } break;
@@ -585,15 +615,18 @@ void cpu_exec() {
   } break;
   case INC_AX: {
     /* printf("INC_AX "); */
+    cpu.cycles++;
     inc(abs_x());
   } break;
   case INX: {
     // printf("INX\n");
+    cpu.cycles++;
     cpu.X += 1;
     set_NZ(cpu.X);
   } break;
   case INY: {
     // printf("INY\n");
+    cpu.cycles++;
     cpu.Y += 1;
     set_NZ(cpu.Y);
   } break;
@@ -607,6 +640,7 @@ void cpu_exec() {
   } break;
   case JSR: {
     // printf("JSR\n");
+    cpu.cycles++;
     stack_push_16(cpu.PC + 1);
     cpu.PC = abs_();
   } break;
@@ -684,6 +718,7 @@ void cpu_exec() {
   } break;
   case LSR_ACC: {
     // printf("LSR_ACC\n");
+    cpu.cycles++;
     cpu.CF = (cpu.A & 0x01) != 0;
     cpu.A >>= 1;
     set_NZ(cpu.A);
@@ -702,10 +737,12 @@ void cpu_exec() {
   } break;
   case LSR_AX: {
     // printf("LSR_AX\n");
+    cpu.cycles++;
     lsr(abs_x());
   } break;
   case NOP: {
     // printf("NOP\n");
+    cpu.cycles++;
   } break;
   case ORA_I: {
     // printf("ORA_I\n");
@@ -749,15 +786,18 @@ void cpu_exec() {
   } break;
   case PLA: {
     // printf("PLA\n");
+    cpu.cycles++;
     cpu.A = stack_pull();
     set_NZ(cpu.A);
   } break;
   case PLP: {
     // printf("PLP\n");
+    cpu.cycles++;
     cpu.PS = stack_pull() & ~0x10;
   } break;
   case ROL_ACC: {
     // printf("ROL_ACC\n");
+    cpu.cycles++;
     u8 old_cf = cpu.CF;
     cpu.CF    = (cpu.A & 0x80) != 0;
     cpu.A     = (cpu.A << 1) | old_cf;
@@ -777,10 +817,12 @@ void cpu_exec() {
   } break;
   case ROL_AX: {
     // printf("ROL_AX\n");
+    cpu.cycles++;
     rol(abs_x());
   } break;
   case ROR_ACC: {
     // printf("ROR_ACC\n");
+    cpu.cycles++;
     u8 old_cf = cpu.CF;
     cpu.CF    = (cpu.A & 0x01) != 0;
     cpu.A     = (cpu.A >> 1) | (old_cf << 7);
@@ -800,15 +842,18 @@ void cpu_exec() {
   } break;
   case ROR_AX: {
     // printf("ROR_AX\n");
+    cpu.cycles++;
     ror(abs_x());
   } break;
   case RTI: {
     // printf("RTI\n");
+    cpu.cycles += 2;
     cpu.PS = stack_pull() & ~0x10;
     cpu.PC = stack_pull_16();
   } break;
   case RTS: {
     // printf("RTS\n");
+    cpu.cycles += 3;
     cpu.PC = stack_pull_16() + 1;
   } break;
   case SBC_I: {
@@ -845,14 +890,17 @@ void cpu_exec() {
   } break;
   case SEC: {
     // printf("SEC\n");
+    cpu.cycles++;
     cpu.CF = 1;
   } break;
   case SED: {
     // printf("SED\n");
+    cpu.cycles++;
     cpu.DF = 1;
   } break;
   case SEI: {
     // printf("SEI\n");
+    cpu.cycles++;
     cpu.IF = 1;
   } break;
   case STA_Z: {
@@ -869,10 +917,12 @@ void cpu_exec() {
   } break;
   case STA_AX: {
     // printf("STA_AX\n");
+    cpu.cycles++;
     sta(abs_x());
   } break;
   case STA_AY: {
     // printf("STA_AY\n");
+    cpu.cycles++;
     sta(abs_y());
   } break;
   case STA_IX: {
@@ -881,6 +931,7 @@ void cpu_exec() {
   } break;
   case STA_IY: {
     // printf("STA_IY\n");
+    cpu.cycles++;
     sta(ind_y());
   } break;
   case STX_Z: {
@@ -909,30 +960,36 @@ void cpu_exec() {
   } break;
   case TAX: {
     // printf("TAX\n");
+    cpu.cycles++;
     cpu.X = cpu.A;
     set_NZ(cpu.X);
   } break;
   case TAY: {
     // printf("TAY\n");
+    cpu.cycles++;
     cpu.Y = cpu.A;
     set_NZ(cpu.Y);
   } break;
   case TSX: {
     // printf("TSX\n");
+    cpu.cycles++;
     cpu.X = cpu.SP;
     set_NZ(cpu.X);
   } break;
   case TXA: {
     // printf("TXA\n");
+    cpu.cycles++;
     cpu.A = cpu.X;
     set_NZ(cpu.A);
   } break;
   case TXS: {
     // printf("TXS\n");
+    cpu.cycles++;
     cpu.SP = cpu.X;
   } break;
   case TYA: {
     // printf("TYA\n");
+    cpu.cycles++;
     cpu.A = cpu.Y;
     set_NZ(cpu.A);
   } break;
@@ -958,16 +1015,21 @@ void cpu_reset() {
   cpu.Y  = 0;
   cpu.PS = 0;
   cpu.UF = 1; // set unused bit to 1
+
+  cpu.nmi_pending        = 0;
+  cpu.nmi_instr_cooldown = DEFAULT_NMI_INSTR_COOLDOWN;
 }
 
 void cpu_brk() {
   if (cpu.IF)
     return;
 
+  cpu.cycles++;
+
   cpu.BF = 1;
   cpu.UF = 1;
 
-  stack_push_16(cpu.PC);
+  stack_push_16(cpu.PC + 1);
   stack_push(cpu.PS);
 
   cpu.DF = 0;
@@ -977,6 +1039,8 @@ void cpu_brk() {
 }
 
 void cpu_nmi() {
+  cpu.cycles += 2;
+
   cpu.UF = 1;
 
   stack_push_16(cpu.PC);
@@ -985,11 +1049,16 @@ void cpu_nmi() {
   cpu.DF = 0;
   cpu.IF = 1;
   cpu.PC = READ_16LE(0xFFFA);
+
+  cpu.nmi_pending        = 0;
+  cpu.nmi_instr_cooldown = DEFAULT_NMI_INSTR_COOLDOWN;
 }
 
 void cpu_irq() {
   if (cpu.IF)
     return;
+
+  cpu.cycles += 2;
 
   cpu.UF = 1;
 
