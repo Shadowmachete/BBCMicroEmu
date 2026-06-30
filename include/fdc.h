@@ -48,6 +48,8 @@ typedef struct {
 
   u32 data_offset;
   u32 bytes_remaining;
+
+  u32 nmi_delay; // instructions until the next data/result NMI is raised
 } FDC;
 
 typedef enum {
@@ -74,6 +76,8 @@ typedef enum {
 
 u8 fdc_read(u16 addr);
 void fdc_write(u16 addr, u8 v);
+
+void fdc_tick(void);
 
 void fdc_load_ssd(const char *file_name);
 

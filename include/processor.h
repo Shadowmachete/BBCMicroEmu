@@ -180,9 +180,9 @@ typedef struct {
   };
 
   b8 nmi_pending;
-  u8 nmi_instr_cooldown;
 
   u8 cycles;
+  b8 crossed_page;
 } CPU;
 
 extern CPU cpu;

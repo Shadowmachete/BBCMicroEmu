@@ -177,9 +177,6 @@ int main() {
 
     for (int i = 0; i < 10000; i++) {
       /* printf("PC = 0x%0X\n", cpu.PC); */
-      if (cpu.nmi_pending && cpu.nmi_instr_cooldown-- == 0) {
-        cpu_nmi();
-      }
       cpu_exec();
     }
   }

@@ -99,7 +99,7 @@
 #include "types.h"
 #include <stdio.h>
 
-VIA system_via = {.ier = 0xF};
+VIA system_via = {0}; // 6522 resets all registers (incl. IER) to 0
 VIA user_via;
 
 u8 system_via_read(u16 addr) {
@@ -150,7 +150,7 @@ u8 system_via_read(u16 addr) {
     return pending ? (system_via.ifr | 0x80) : (system_via.ifr & 0x7F);
   } break;
   case 0xE: {
-    return system_via.ier;
+    return system_via.ier | 0x80; // bit 7 always reads as 1 on the 6522
   } break;
   case 0xF: {
     return system_via.reg_a;

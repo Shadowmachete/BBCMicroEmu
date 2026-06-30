@@ -68,14 +68,17 @@
 #define SECTORS_PER_TRACK 10
 #define SECTOR_SIZE 256
 
-FDC fdc     = {0};
-u8 *ssd_buf = NULL;
+#define NMI_DELAY 32
+
+FDC fdc          = {0};
+u8 *ssd_buf      = NULL;
+u64 ssd_filesize = 0;
 
 // executes the command after receiving all parameters
 void fdc_exec_command();
 
 void fdc_reset() {
-  printf("reset fdc\n");
+  /* printf("reset fdc\n"); */
 
   if (fdc.param_buf != NULL)
     free(fdc.param_buf);
@@ -96,11 +99,11 @@ void fdc_reset() {
 u8 fdc_read(u16 addr) {
   switch (addr & 0xFF) {
   case 0x80: {
-    /* printf("read stat reg\n"); */
+    /* printf("read stat reg %b\n", fdc.status_reg); */
     return fdc.status_reg;
   }
   case 0x81: {
-    printf("read res reg %d\n", fdc.res_reg);
+    /* printf("read res reg %b\n", fdc.res_reg); */
     fdc.status_reg &= ~(1 << 3); // clear interrupt request
     fdc.status_reg &= ~(1 << 4); // result empty
     return fdc.res_reg;
@@ -132,8 +135,11 @@ u8 fdc_read(u16 addr) {
       fdc.status_reg &= ~(1 << 7); // command free
     }
 
-    cpu.nmi_pending = 1;
-    fdc.res_reg     = 0; // result ok
+    // Raise the next NMI only after a short delay so the running NMI handler
+    // can finish (store the byte, decrement its counter) and RTI first. Raising
+    // it immediately re-enters the handler before it stores anything.
+    fdc.nmi_delay = NMI_DELAY;
+    fdc.res_reg   = 0; // result ok
 
     return val;
   }
@@ -145,7 +151,7 @@ u8 fdc_read(u16 addr) {
 void fdc_write(u16 addr, u8 v) {
   switch (addr & 0xFF) {
   case 0x80: {
-    printf("set command = 0x%0X\n", v);
+    /* printf("set command = 0x%0X\n", v); */
     fdc.status_reg |= 1 << 7; // command busy
     fdc.status_reg |= 1 << 6; // command full
     fdc.cmd_reg = v;
@@ -201,7 +207,7 @@ void fdc_write(u16 addr, u8 v) {
     fdc.param_buf = (u8 *)realloc(fdc.param_buf, fdc.param_count * sizeof(u8));
   } break;
   case 0x81: {
-    printf("set param = 0x%0X\n", v);
+    /* printf("set param = 0x%0X\n", v); */
 
     if (fdc.param_idx == fdc.param_count) {
       printf("Received all %d parameters, did not expect to get another\n",
@@ -232,6 +238,16 @@ void fdc_write(u16 addr, u8 v) {
   }
 }
 
+// Called once per executed CPU instruction. Counts down the inter-byte delay
+// and raises the pending data/result NMI when it elapses.
+void fdc_tick(void) {
+  if (fdc.nmi_delay == 0)
+    return;
+
+  if (--fdc.nmi_delay == 0)
+    cpu.nmi_pending = 1;
+}
+
 void fdc_load_ssd(const char *file_name) {
   FILE *f = fopen(file_name, "rb");
 
@@ -241,15 +257,15 @@ void fdc_load_ssd(const char *file_name) {
   }
 
   fseek(f, 0L, SEEK_END);
-  u8 file_size = ftell(f);
+  ssd_filesize = ftell(f);
   fseek(f, 0L, SEEK_SET);
 
-  ssd_buf = realloc(ssd_buf, file_size);
+  ssd_buf = realloc(ssd_buf, ssd_filesize);
 
-  size_t n = fread(ssd_buf, 1, file_size, f);
+  size_t n = fread(ssd_buf, 1, ssd_filesize, f);
   fclose(f);
 
-  if (n != file_size) {
+  if (n != ssd_filesize) {
     fprintf(stderr, "Failed to read all of %s\n", file_name);
     exit(1);
   }
@@ -301,9 +317,18 @@ void fdc_exec_command() {
     fdc.data_offset =
         (fdc.param_buf[0] * SECTORS_PER_TRACK + fdc.param_buf[1]) * SECTOR_SIZE;
 
+    fdc.status_reg |= 1 << 3; // set interrupt request
+    fdc.nmi_delay = NMI_DELAY;
+
+    if (fdc.data_offset >= ssd_filesize) {
+      fdc.res_reg = 0b00011000; // sector not found
+      fdc.status_reg |= 1 << 4; // set result register full
+      break;
+    }
+
     fdc.res_reg = 0;          // result ok
     fdc.status_reg |= 1 << 2; // set non-dma data request
-    cpu.nmi_pending = 1;
+
     return;
   } break;
   case READ_DEL: {

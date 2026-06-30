@@ -110,3 +110,32 @@
 - gated by a proper interrupt system
 - adding cycling count is so stupid if i dont hard-code
 - struggling on cycle counting last i saw
+
+---
+
+## 20260627 - Saturday: Day 11
+
+---
+
+- decided to hard code cycle count instead of handling it per bus access since the
+  cpu sometimes does phantom reads / writes
+- page tracking for cycle counts also added
+
+---
+
+## 20260628 - Sunday: Day 12
+
+---
+
+- still stuck trying to figure out why dfs goes through every single track's
+  sector 0 & 1 when the data is in the first few tracks
+
+---
+
+## 20260630 - Tuesday: Day 13
+
+---
+
+- finally figured out the bug with dfs data, was some random number for the delay
+  on nmi call
+- chuckie egg runs and blocked on teletext

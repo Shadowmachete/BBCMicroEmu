@@ -122,10 +122,10 @@ void fe_write(u16 addr, u8 value) {
 void map_page(int page_index, u8 *backing) { page_ptr[page_index] = backing; }
 
 void map_paged_rom(int rom_index) {
-  if (rom_index == 0)
-    printf("load basic\n");
-  else if (rom_index == 1)
-    printf("load dfs\n");
+  /* if (rom_index == 0) */
+  /*   printf("load basic\n"); */
+  /* else if (rom_index == 1) */
+  /*   printf("load dfs\n"); */
 
   u8 *rom = rom_bank[rom_index];
 
@@ -172,7 +172,7 @@ void mem_init(void) {
   rom_bank[bank_counter++] = basic_rom;
 
   // Load BASIC ROM from disk
-  f = fopen("dfs.rom", "rb");
+  f = fopen("dfs120.rom", "rb");
 
   if (f == NULL) {
     perror("Failed to open dfs.rom file\n");
@@ -237,8 +237,6 @@ void mem_init(void) {
 }
 
 u8 mem_read(u16 addr) {
-  cpu.cycles++;
-
   u8 p = (addr >> 8) & 0xFF;
   if (page_read_handler[p]) {
     /* printf("Reading from 0x%0X\n", addr); */
@@ -254,8 +252,6 @@ u8 mem_read(u16 addr) {
 }
 
 void mem_write(u16 addr, u8 v) {
-  cpu.cycles++;
-
   u8 p = (addr >> 8) & 0xFF;
   if (readonly[p]) {
     printf("Attempt to write to read-only memory address 0x%04X denied\n",
